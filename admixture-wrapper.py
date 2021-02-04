@@ -58,6 +58,12 @@ def get_args():
                             type=int,
                             default=1,
                             help="OPTIONAL: Specifies number of threads to use. Default = 1.")
+    
+     parser.add_argument("-s", "--seed",
+                           	required = False,
+							type=int,
+							default=time,
+							help="set a different random seed each time you run the analysis. Default is randomized by setting the current time")
         
     return parser.parse_args()
 
@@ -65,8 +71,8 @@ def write_log(argd, text, indir):
     os.chdir(indir)
     if argd:
         with open("admixture_wrapper.log", 'a') as fh:
-            fh.write("Run executed: {}\n\nadmixture_wrapper settings:\n-i:\t\t{}\n--kmin:\t{}\n--kmax:\t{}\n--reps:\t{}\n--cv:\t{}\n-t:\t\t{}\n\n"
-                .format(datetime.now(), argd["indir"], argd["kmin"], argd["kmax"], argd["reps"], argd["cv"], argd["threads"]))
+            fh.write("Run executed: {}\n\nadmixture_wrapper settings:\n-i:\t\t{}\n--kmin:\t{}\n--kmax:\t{}\n--reps:\t{}\n--cv:\t{}\n-t:\t\t{}\n-s:\t{}\n\n"
+                .format(datetime.now(), argd["indir"], argd["kmin"], argd["kmax"], argd["reps"], argd["cv"], argd["threads"], argd["seed"]))
     else:
         with open("admixture_wrapper.log", 'a') as fh:
             fh.write("{}".format(text))
@@ -92,7 +98,7 @@ def make_outdir(indir, prefix):
                              "{}\nPlease remove before running.\n\n\n".format(outdir))
     return outdir
 
-def run_admixture(p, indir, kmin, kmax, reps, cv, threads):
+def run_admixture(p, indir, kmin, kmax, reps, cv, threads, seed):
     os.chdir(indir)
     outdir = make_outdir(indir, p.split('.ped')[0])
     
@@ -107,7 +113,7 @@ def run_admixture(p, indir, kmin, kmax, reps, cv, threads):
             print("Running: K{0} replicate {1}".format(j[0], j[1]))
             print("{}\n".format("-"*50))
             
-            call_str = "admixture {0} {1} -j{2} --cv={3} | tee {4}.{1}.out".format(p, j[0], threads, cv, p.split('.ped')[0])
+            call_str = "admixture {0} {1} -j{2} --cv={3} -s {4} | tee {5}.{1}.out".format(p, j[0], threads, cv, seed, p.split('.ped')[0])
             write_log(None, "{0}: K{1} replicate {2}: {3}\n".format(datetime.now(), j[0], j[1], call_str), indir)
             print("{}\n".format(call_str))
             proc = sp.call(call_str, shell=True)
@@ -176,8 +182,8 @@ def main():
     tb = datetime.now()
     
     argd = vars(args)
-    print("\n\n\nadmixture_wrapper settings:\n-i: {}\n--kmin: {}\n--kmax: {}\n--reps: {}\n--cv {}\n-t {}\n\n"
-              .format(argd["indir"], argd["kmin"], argd["kmax"], argd["reps"], argd["cv"], argd["threads"]))    
+    print("\n\n\nadmixture_wrapper settings:\n-i: {}\n--kmin: {}\n--kmax: {}\n--reps: {}\n--cv {}\n-t {}\n-s:\t{}\n\n"
+              .format(argd["indir"], argd["kmin"], argd["kmax"], argd["reps"], argd["cv"], argd["threads"], argd["seed"]))    
     write_log(argd, None, args.indir)
     
     peds = get_peds(args.indir)
@@ -188,7 +194,7 @@ def main():
         print("{}\n\n".format("="*80))
         write_log(None, "\n\n{0}\nRunning admixture for: {1}\n{0}\n\n".format("="*80, p), args.indir)
         
-        outdir = run_admixture(p, args.indir, args.kmin, args.kmax, args.reps, args.cv, args.threads)
+        outdir = run_admixture(p, args.indir, args.kmin, args.kmax, args.reps, args.cv, args.threads, args.seed)
         
         summarize_outputs(outdir, args.indir, args.kmin, args.kmax, p.split('.ped')[0])
         
